@@ -1,0 +1,215 @@
+
+#include <iostream>
+#include <string>
+#include <mysql/mysql.h>
+
+// Параметры подключения к базе данных
+const char* HOST = "localhost";
+const char* USER = "root";
+const char* PASSWORD = "7363";
+const char* DATABASE = "warehouse";
+
+MYSQL* conn;
+std::string currentUserRole;
+
+void executeSQL(const std::string& sql) {
+    if (mysql_query(conn, sql.c_str())) {
+        std::cerr << "Ошибка MySQL: " << mysql_error(conn) << std::endl;
+    }
+}
+
+void createClothingItem() {
+    if (currentUserRole != "admin") {
+        std::cout << "Доступ запрещен." << std::endl;
+        return;
+    }
+
+    std::string manufacturer, article, season, name, size;
+    double price;
+    int quantity;
+
+    std::cout << "Введите изготовителя: ";
+    std::cin >> manufacturer;
+    std::cout << "Введите артикул: ";
+    std::cin >> article;
+    std::cout << "Введите сезон: ";
+    std::cin >> season;
+    std::cout << "Введите наименование: ";
+    std::cin >> name;
+    std::cout << "Введите цену: ";
+    std::cin >> price;
+    std::cout << "Введите размеры: ";
+    std::cin >> size;
+    std::cout << "Введите количество: ";
+    std::cin >> quantity;
+
+    std::string sql = "INSERT INTO clothing (manufacturer, article, season, name, price, size, quantity) VALUES ('" +
+                      manufacturer + "', '" + article + "', '" + season + "', '" + name + "', " + std::to_string(price) +
+                      ", '" + size + "', " + std::to_string(quantity) + ");";
+    executeSQL(sql);
+
+    std::cout << "Одежда добавлена." << std::endl;
+}
+
+void readClothing() {
+    std::string sql = "SELECT * FROM clothing;";
+    if (mysql_query(conn, sql.c_str())) {
+        std::cerr << "Ошибка MySQL: " << mysql_error(conn) << std::endl;
+        return;
+    }
+
+    MYSQL_RES* result = mysql_store_result(conn);
+    if (!result) {
+        std::cerr << "Ошибка получения результата: " << mysql_error(conn) << std::endl;
+        return;
+    }
+
+    MYSQL_ROW row;
+    std::cout << "Ассортимент одежды:" << std::endl;
+    while ((row = mysql_fetch_row(result))) {
+        std::cout << "Изготовитель: " << row[1] << " Артикул: " << row[2] << " Сезон: " << row[3]
+                  << " Наименование: " << row[4] << " Цена: " << row[5] << " Размер: " << row[6]
+                  << " Количество: " << row[7] << std::endl;
+    }
+
+    mysql_free_result(result);
+}
+
+void findClothingByCriteria() {
+    std::string article, size, season;
+    std::cout << "Введите артикул: ";
+    std::cin >> article;
+    std::cout << "Введите размер: ";
+    std::cin >> size;
+    std::cout << "Введите сезон: ";
+    std::cin >> season;
+
+    std::string sql = "SELECT * FROM clothing WHERE article LIKE '" + article + "%' AND size = '" + size + "' AND season = '" + season + "';";
+    if (mysql_query(conn, sql.c_str())) {
+        std::cerr << "Ошибка MySQL: " << mysql_error(conn) << std::endl;
+        return;
+    }
+
+    MYSQL_RES* result = mysql_store_result(conn);
+    if (!result) {
+        std::cerr << "Ошибка получения результата: " << mysql_error(conn) << std::endl;
+        return;
+    }
+
+    MYSQL_ROW row;
+    std::cout << "Найденная одежда:" << std::endl;
+    while ((row = mysql_fetch_row(result))) {
+        std::cout << "Изготовитель: " << row[1] << " Артикул: " << row[2] << " Сезон: " << row[3]
+                  << " Наименование: " << row[4] << " Цена: " << row[5] << " Размер: " << row[6]
+                  << " Количество: " << row[7] << std::endl;
+    }
+
+    mysql_free_result(result);
+}
+
+void loginUser() {
+    std::string login, password;
+    std::cout << "Введите логин: ";
+    std::cin >> login;
+    std::cout << "Введите пароль: ";
+    std::cin >> password;
+
+    std::string sql = "SELECT role FROM users WHERE login = '" + login + "' AND password = '" + password + "';";
+    if (mysql_query(conn, sql.c_str())) {
+        std::cerr << "Ошибка MySQL: " << mysql_error(conn) << std::endl;
+        return;
+    }
+
+    MYSQL_RES* result = mysql_store_result(conn);
+    if (!result) {
+        std::cerr << "Ошибка получения результата: " << mysql_error(conn) << std::endl;
+        return;
+    }
+
+🌐YWG $HAGGI💎, [17.12.2024 23:43]
+MYSQL_ROW row = mysql_fetch_row(result);
+    if (row) {
+        currentUserRole = row[0];
+        std::cout << "Успешный вход. Ваша роль: " << currentUserRole << std::endl;
+    } else {
+        std::cout << "Неверный логин или пароль." << std::endl;
+        currentUserRole = "";
+    }
+
+    mysql_free_result(result);
+}
+
+void menu() {
+    int choice;
+    do {
+        std::cout << "\nМеню:\n";
+        std::cout << "1. Добавить одежду\n";
+        std::cout << "2. Просмотреть весь ассортимент\n";
+        std::cout << "3. Найти одежду по критериям\n";
+        std::cout << "0. Выход\n";
+        std::cout << "Выберите действие: ";
+        std::cin >> choice;
+
+        switch (choice) {
+            case 1:
+                createClothingItem();
+                break;
+            case 2:
+                readClothing();
+                break;
+            case 3:
+                findClothingByCriteria();
+                break;
+            case 0:
+                std::cout << "Выход из программы." << std::endl;
+                break;
+            default:
+                std::cout << "Неверный выбор. Попробуйте снова." << std::endl;
+        }
+    } while (choice != 0);
+}
+
+int main() {
+    conn = mysql_init(nullptr);
+    if (!conn) {
+        std::cerr << "Не удалось инициализировать MySQL." << std::endl;
+        return 1;
+    }
+
+    if (!mysql_real_connect(conn, HOST, USER, PASSWORD, DATABASE, 0, nullptr, 0)) {
+        std::cerr << "Ошибка подключения к базе данных: " << mysql_error(conn) << std::endl;
+        return 1;
+    }
+
+    std::string createClothingTableSQL = 
+        "CREATE TABLE IF NOT EXISTS clothing ("
+        "id INT AUTO_INCREMENT PRIMARY KEY, "
+        "manufacturer VARCHAR(100), "
+        "article VARCHAR(50), "
+        "season VARCHAR(50), "
+        "name VARCHAR(100), "
+        "price DOUBLE, "
+        "size VARCHAR(10), "
+        "quantity INT);";
+    executeSQL(createClothingTableSQL);
+
+    std::string createUsersTableSQL = 
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INT AUTO_INCREMENT PRIMARY KEY, "
+        "login VARCHAR(50), "
+        "password VARCHAR(50), "
+        "role VARCHAR(10));";
+    executeSQL(createUsersTableSQL);
+
+    std::string insertAdminSQL = 
+        "INSERT IGNORE INTO users (login, password, role) VALUES ('admin', 'admin', 'admin');";
+    executeSQL(insertAdminSQL);
+
+    loginUser();
+    if (!currentUserRole.empty()) {
+        menu();
+    }
+
+    mysql_close(conn);
+    return 0;
+}
